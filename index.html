@@ -1,0 +1,1249 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- SATIR 6: TARAYICI SEKMESİ BAŞLIĞI -->
+    <title>Gölge ve Fener — Agency & Reciprocity</title>
+    <link rel="stylesheet" href="fonts/fonts.css">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+        }
+
+        body {
+            font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: #162238;
+            color: #f1e9d8;
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #gameCanvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        /* Üst Bilgi Paneli (HUD) */
+        .hud-bar {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .hud-card {
+            background: rgba(241, 233, 216, 0.95);
+            color: #1d1c1a;
+            border: 2.5px solid #1d1c1a;
+            box-shadow: 4px 4px 0px #1d1c1a;
+            padding: 12px 18px;
+            border-radius: 6px;
+            pointer-events: auto;
+        }
+
+        .hud-title {
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            opacity: 0.7;
+        }
+
+        .hud-value {
+            font-size: 22px;
+            font-weight: 700;
+            margin-top: 2px;
+        }
+
+        .hud-group {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 3px 8px;
+            font-size: 11px;
+            font-weight: 700;
+            border: 1.5px solid #1d1c1a;
+            border-radius: 4px;
+            background: #7fae68;
+            color: #1d1c1a;
+            transition: background 0.2s ease, color 0.2s ease;
+        }
+
+        .badge.wait {
+            background: #e2a23a;
+            color: #1d1c1a;
+        }
+
+        .badge.alert {
+            background: #e8462b;
+            color: #f1e9d8;
+            animation: pulseBadge 0.5s infinite alternate;
+        }
+
+        .badge.stealth {
+            background: #3f78b5;
+            color: #f1e9d8;
+        }
+
+        @keyframes pulseBadge {
+            from { transform: scale(1); }
+            to { transform: scale(1.08); }
+        }
+
+        .timer-wrap {
+            width: 220px;
+            margin-top: 6px;
+        }
+
+        .timer-track {
+            width: 100%;
+            height: 10px;
+            background: #d8cfc0;
+            border: 1.5px solid #1d1c1a;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .timer-fill {
+            height: 100%;
+            width: 100%;
+            background: #e2a23a;
+            transition: width 0.1s linear;
+        }
+
+        /* Alt Kontrol Şeridi */
+        .bottom-controls {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            z-index: 10;
+        }
+
+        .btn-pill {
+            background: #f1e9d8;
+            color: #1d1c1a;
+            border: 2px solid #1d1c1a;
+            box-shadow: 3px 3px 0px #1d1c1a;
+            padding: 8px 14px;
+            font-family: inherit;
+            font-size: 13px;
+            font-weight: 700;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        .btn-pill:hover {
+            background: #e2a23a;
+        }
+
+        #toastMessage {
+            position: fixed;
+            top: 95px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1d1c1a;
+            color: #f1e9d8;
+            border: 2px solid #e2a23a;
+            padding: 8px 18px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            opacity: 0;
+            transition: opacity 0.25s ease;
+            pointer-events: none;
+            z-index: 15;
+        }
+
+        /* Açılış ve Bitiş Ekranları */
+        .overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(22, 34, 56, 0.86);
+            backdrop-filter: blur(4px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 30;
+        }
+
+        .modal {
+            background: #f1e9d8;
+            color: #1d1c1a;
+            border: 3px solid #1d1c1a;
+            box-shadow: 8px 8px 0px #1d1c1a;
+            max-width: 560px;
+            width: 90%;
+            padding: 32px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .modal h1 {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            letter-spacing: -0.02em;
+        }
+
+        .modal p {
+            font-size: 15px;
+            line-height: 1.55;
+            margin-bottom: 18px;
+            color: #3a3834;
+        }
+
+        .principles-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            text-align: left;
+            margin-bottom: 22px;
+        }
+
+        .principle-box {
+            background: #e6decb;
+            border: 1.5px solid #1d1c1a;
+            padding: 12px;
+            border-radius: 6px;
+        }
+
+        .principle-box strong {
+            display: block;
+            font-size: 13px;
+            text-transform: uppercase;
+            color: #e8462b;
+            margin-bottom: 4px;
+        }
+
+        .principle-box span {
+            font-size: 13px;
+            line-height: 1.4;
+        }
+
+        .primary-btn {
+            background: #e8462b;
+            color: #f1e9d8;
+            border: 2.5px solid #1d1c1a;
+            box-shadow: 4px 4px 0px #1d1c1a;
+            padding: 14px 28px;
+            font-family: inherit;
+            font-size: 16px;
+            font-weight: 700;
+            border-radius: 8px;
+            cursor: pointer;
+            width: 100%;
+        }
+
+        .primary-btn:hover {
+            background: #d1381e;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- ÜST HUD -->
+    <div class="hud-bar">
+        <div class="hud-group">
+            <div class="hud-card">
+                <div class="hud-title">Aşama & Keeper Durumu</div>
+                <div class="hud-value" style="display:flex; align-items:center; gap:10px;">
+                    <span id="stageDisplay">AŞAMA 1 / 4</span>
+                    <span id="statusBadge" class="badge wait">İLK ADIMIN BEKLENİYOR</span>
+                </div>
+            </div>
+
+            <div class="hud-card">
+                <div class="hud-title">Hayatta Kalma / Tur Süresi</div>
+                <div class="hud-value" id="timeText">45.0 sn</div>
+                <div class="timer-wrap">
+                    <div class="timer-track">
+                        <div id="timerFill" class="timer-fill"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="hud-group">
+            <div class="hud-card">
+                <div class="hud-title">Ruh Küreleri</div>
+                <div class="hud-value" id="orbDisplay">0 / 4</div>
+            </div>
+
+            <div class="hud-card">
+                <div class="hud-title">Can Hakkı</div>
+                <div class="hud-value" id="livesDisplay">👻 👻 👻</div>
+            </div>
+
+            <div class="hud-card">
+                <div class="hud-title">Skor</div>
+                <div class="hud-value" id="scoreDisplay">0</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="toastMessage"></div>
+
+    <!-- ALT KONTROL PANELİ -->
+    <div class="bottom-controls">
+        <div class="hud-card" style="padding: 8px 14px; font-size: 13px;">
+            <strong>WASD / Oklar:</strong> Süzül (Ghost) &nbsp;|&nbsp;
+            <strong>SHIFT:</strong> Hızlı Kaçış &nbsp;|&nbsp;
+            <strong>Old Moon'a Yaklaşma:</strong> Keeper Hızlanır!
+        </div>
+        <button class="btn-pill" id="camToggleBtn" onclick="toggleCamera()">Kamera: İzometrik</button>
+        <button class="btn-pill" id="styleToggleBtn" onclick="toggleStyle()">Stil: Montour Baskı</button>
+    </div>
+
+    <!-- BAŞLANGIÇ EKRANI -->
+    <div id="startOverlay" class="overlay">
+        <div class="modal">
+            <h1>GÖLGE VE FENER</h1>
+            <p>
+                Pazarlık Adacığı'nda süzülen <strong>Ghost</strong> olarak fenerli <strong>Keeper</strong>'dan kaç ve
+                adadaki Ruh Kürelerini topla! Sen ilk adımını atana kadar Keeper harekete geçmez.
+                Ancak <strong>Old Moon</strong>'un ışık halesine girersen Keeper hızlanır!
+            </p>
+
+            <div class="principles-grid">
+                <div class="principle-box">
+                    <strong>01. Agency (Eylemlilik)</strong>
+                    <span>Takibi başlatacak ilk adımı atma, kaçış rotası seçme ve Baykuş Ormanı'na saklanma iradesi tamamen oyuncudadır.</span>
+                </div>
+                <div class="principle-box">
+                    <strong>02. Reciprocity (Karşılıklılık)</strong>
+                    <span>Old Moon'a yaklaştığında sistem dinamik karşılık üretir: Ay parlar, alarm çalar ve Keeper hızını artırarak takip eder.</span>
+                </div>
+            </div>
+
+            <button class="primary-btn" id="startBtn" onclick="startGame()">ADAYA GİR (SPACE veya TIKLA)</button>
+        </div>
+    </div>
+
+    <!-- OYUN SONU / ZAFER EKRANI -->
+    <div id="endOverlay" class="overlay hidden">
+        <div class="modal">
+            <h1 id="endTitle">FENERE YAKALANDIN!</h1>
+            <p id="endDesc">Keeper seni fenerinin ışığıyla yakaladı.</p>
+            <div class="hud-card" style="margin-bottom: 20px;">
+                <div class="hud-title">Toplam Başarı Puanı</div>
+                <div class="hud-value" id="finalScore">0</div>
+            </div>
+            <button class="primary-btn" id="restartBtn" onclick="startGame()">YENİDEN OYNA (SPACE)</button>
+        </div>
+    </div>
+
+    <script>
+        // =========================================================================
+        // CANLI KOD DEĞİŞİMİ (LIVE CHANGE) AYAR MERKEZİ
+        // Hoca sunumda hız, can, süre veya Old Moon mesafesini değiştirtirse buradan yap!
+        // =========================================================================
+        const GAME_CONFIG = {
+            ghostSpeed: 2.6,            // Bizim (Ghost) normal süzülme hızımız (Sakin ve kontrollü)
+            sprintMultiplier: 1.45,     // Shift tuşuyla hızlanma çarpanı
+            keeperBaseSpeed: 1.45,      // Keeper'ın normal takip hızı (Oldukça yavaş ve dengeli)
+            moonBoostMultiplier: 1.45,  // Old Moon'a yaklaşınca Keeper'ın hızlanma çarpanı
+            forestSlowMultiplier: 0.55, // Ghost Baykuş Ormanı'ndayken Keeper'ın yavaşlama oranı
+            moonAlertRadius: 2.1,       // Old Moon'un bizi fark etme (alarm) yarıçapı
+            catchRadius: 0.60,          // Keeper'ın bizi yakalama mesafesi
+            orbCollectRadius: 0.85,     // Ruh küresi toplama mesafesi
+            maxLives: 3,                // Toplam yakalanma (can) hakkı
+            controls: {
+                up: ['KeyW', 'ArrowUp'],
+                down: ['KeyS', 'ArrowDown'],
+                left: ['KeyA', 'ArrowLeft'],
+                right: ['KeyD', 'ArrowRight'],
+                sprint: 'ShiftLeft'
+            },
+            // Aşamalar: Süre (duration), Toplanacak Küre (orbs), Old Moon Devriye Hızı (moonSpeed), Keeper Hız Çarpanı (keeperBonus)
+            stages: [
+                { stage: 1, duration: 35, orbs: 4, moonSpeed: 0.40, keeperBonus: 1.00, bonusPerSec: 20 },
+                { stage: 2, duration: 32, orbs: 5, moonSpeed: 0.50, keeperBonus: 1.08, bonusPerSec: 30 },
+                { stage: 3, duration: 25, orbs: 6, moonSpeed: 0.60, keeperBonus: 1.15, bonusPerSec: 30 },
+                { stage: 4, duration: 20, orbs: 7, moonSpeed: 0.70, keeperBonus: 1.22, bonusPerSec: 40}
+            ],
+            palette: 'c' // 'c' = Montour Renkli, 'b' = Kağıt+Ahşap, 'a' = 1-Bit Gravür
+        };
+
+        // =========================================================================
+        // PALETLER VE ADA VERİLERİ (ZIP DOSYASINDAKİ GERÇEK PLAN)
+        // =========================================================================
+        const PALETTES = {
+            c: { paper: '#f1e9d8', ink: '#1d1c1a', hot: '#e8462b', warm: '#e2a23a', cool: '#3f78b5', pink: '#ea8ca6', green: '#7fae68', wood: '#c4955c', sand: '#dcc196', sea: '#162238', seaShallow: '#233858' },
+            b: { paper: '#f3ecdc', ink: '#1c1a17', hot: '#ff6648', warm: '#c4955c', cool: '#3d3a35', pink: '#dcc196', green: '#8b734b', wood: '#c4955c', sand: '#dcc196', sea: '#1c1a17', seaShallow: '#38332c' },
+            a: { paper: '#f2efe6', ink: '#151515', hot: '#ff6648', warm: '#9a9a9a', cool: '#151515', pink: '#f2efe6', green: '#707070', wood: '#9a9a9a', sand: '#c8c4ba', sea: '#151515', seaShallow: '#444444' }
+        };
+
+        const ISLAND_DATA = {
+            coast: [[-5.6, 0.4], [-4.8, -3.2], [-1.6, -5], [2.6, -4.6], [5.4, -1.8], [5.6, 1.8], [3.4, 4.6], [-0.6, 5.2], [-4, 3.8]],
+            sandZone: [[1, -0.6], [3.8, -0.6], [3.8, 2.2], [1, 2.2]],
+            forestZone: [[-3.2, -3.8], [0.6, -4.1], [1.2, -2.2], [-2.6, -1.8]],
+            paths: [
+                [[3, -3.3], [2.8, -1], [2.4, 0.6]],
+                [[2.4, 0.6], [-0.4, 0.2], [-1.8, -0.2]]
+            ],
+            lighthouse: { x: 2.6, z: 0.8 },  // place: hub (Lighthouse)
+            owlForest: { x: -1.6, z: -2.8 }, // place: 02 (Owl Forest)
+            houses: [
+                { x: -2.8, z: -0.4, color: 'hot' },
+                { x: -0.4, z: -1.4, color: 'cool' }
+            ],
+            boats: [
+                { x: 6.2, z: 3.2 },
+                { x: 5.4, z: 5.2 }
+            ],
+            trees: [
+                { x: -1.9, z: -3.5, h: 1.35, cone: false },
+                { x: -1.0, z: -2.2, h: 1.3, cone: true },
+                { x: -2.7, z: -3.0, h: 1.4, cone: true },
+                { x: -1.0, z: -3.1, h: 1.25, cone: false },
+                { x: -1.6, z: -2.8, h: 1.6, cone: false },
+                { x: -0.9, z: -2.9, h: 1.7, cone: true },
+                { x: -2.2, z: -2.4, h: 1.45, cone: true }
+            ],
+            lamps: [
+                { x: 4.4, z: -1.4 },
+                { x: 1.8, z: -0.2 }
+            ],
+            orbSpots: [
+                { x: -3.6, z: 1.8 },
+                { x: -2.2, z: -2.6 },
+                { x: 0.6, z: -3.2 },
+                { x: 4.2, z: -1.6 },
+                { x: 3.4, z: 3.2 },
+                { x: -1.0, z: 3.6 },
+                { x: -4.1, z: -1.5 },
+                { x: 1.3, z: -1.4 },
+                { x: 0.2, z: 2.4 }
+            ]
+        };
+
+        // =========================================================================
+        // WEB AUDIO API (GERİLİM KALP ATIŞI, OLD MOON ALARMI & KÜRE SESLERİ)
+        // =========================================================================
+        class ChaseAudio {
+            constructor() { this.ctx = null; }
+            init() {
+                if (!this.ctx) {
+                    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                    if (AudioCtx) this.ctx = new AudioCtx();
+                }
+                if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
+            }
+            playPulse(isAlert = false) {
+                if (!this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = isAlert ? 'sawtooth' : 'sine';
+                osc.frequency.setValueAtTime(isAlert ? 175 : 90, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(45, this.ctx.currentTime + 0.14);
+                gain.gain.setValueAtTime(isAlert ? 0.10 : 0.05, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.15);
+                osc.connect(gain); gain.connect(this.ctx.destination);
+                osc.start(); osc.stop(this.ctx.currentTime + 0.16);
+            }
+            playMoonAlarm() {
+                if (!this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(587.33, this.ctx.currentTime);
+                osc.frequency.setValueAtTime(880, this.ctx.currentTime + 0.08);
+                gain.gain.setValueAtTime(0.13, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.28);
+                osc.connect(gain); gain.connect(this.ctx.destination);
+                osc.start(); osc.stop(this.ctx.currentTime + 0.3);
+            }
+            playOrbCollect() {
+                if (!this.ctx) return;
+                [523.25, 659.25, 987.77].forEach((freq, idx) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'sine';
+                    const t = this.ctx.currentTime + idx * 0.055;
+                    osc.frequency.setValueAtTime(freq, t);
+                    gain.gain.setValueAtTime(0.13, t);
+                    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.24);
+                    osc.connect(gain); gain.connect(this.ctx.destination);
+                    osc.start(t); osc.stop(t + 0.25);
+                });
+            }
+            playCaught() {
+                if (!this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(240, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(65, this.ctx.currentTime + 0.45);
+                gain.gain.setValueAtTime(0.18, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.48);
+                osc.connect(gain); gain.connect(this.ctx.destination);
+                osc.start(); osc.stop(this.ctx.currentTime + 0.5);
+            }
+            playStageWin() {
+                if (!this.ctx) return;
+                [440, 554.37, 659.25, 880].forEach((freq, i) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'triangle';
+                    const t = this.ctx.currentTime + i * 0.08;
+                    osc.frequency.setValueAtTime(freq, t);
+                    gain.gain.setValueAtTime(0.16, t);
+                    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
+                    osc.connect(gain); gain.connect(this.ctx.destination);
+                    osc.start(t); osc.stop(t + 0.42);
+                });
+            }
+        }
+
+        // =========================================================================
+        // OYUN DURUMU VE KARAKTER KONUMLARI
+        // =========================================================================
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const audio = new ChaseAudio();
+
+        let isRunning = false;
+        let hasPlayerMoved = false; // Oyuncu ilk hareketini yapana kadar Keeper ve süre bekler!
+        let currentStageIdx = 0;
+        let timeLeft = GAME_CONFIG.stages[0].duration;
+        let lives = GAME_CONFIG.maxLives;
+        let collectedOrbs = 0;
+        let score = 0;
+        let camMode = 'iso';
+        let styleMode = 0;
+        let activeOrbs = [];
+        let ghostTrail = [];
+        let isMoonAlert = false;
+        let wasMoonAlert = false;
+        let inOwlForest = false;
+        let invulnerableTimer = 0;
+        let lastPulseTime = 0;
+        const keys = {};
+
+        // Karakterler
+        const ghost = { x: -2.2, z: 2.4 };
+        const keeper = { x: 2.6, z: 0.2, speed: GAME_CONFIG.keeperBaseSpeed };
+        const oldMoon = { x: 0.2, z: -1.2, angle: 0.8 };
+
+        let toastTimer = null;
+        function showToast(msg) {
+            const el = document.getElementById('toastMessage');
+            el.textContent = msg;
+            el.style.opacity = '1';
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => { el.style.opacity = '0'; }, 2600);
+        }
+
+        function pointInPoly(poly, x, z) {
+            let inside = false;
+            for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+                const xi = poly[i][0], zi = poly[i][1];
+                const xj = poly[j][0], zj = poly[j][1];
+                if (((zi > z) !== (zj > z)) && (x < (xj - xi) * (z - zi) / (zj - zi) + xi)) {
+                    inside = !inside;
+                }
+            }
+            return inside;
+        }
+
+        function spawnOrbs(count) {
+            activeOrbs = [];
+            const shuffled = [...ISLAND_DATA.orbSpots].sort(() => Math.random() - 0.5).slice(0, count);
+            shuffled.forEach((spot) => {
+                activeOrbs.push({ x: spot.x, z: spot.z, collected: false });
+            });
+        }
+
+        function resetPositions() {
+            ghost.x = -2.2;
+            ghost.z = 2.4;
+            keeper.x = 2.6;
+            keeper.z = 0.2;
+            oldMoon.angle = 0.8;
+            oldMoon.x = Math.cos(oldMoon.angle) * 2.5 - 0.3;
+            oldMoon.z = Math.sin(oldMoon.angle * 1.3) * 2.1;
+            ghostTrail = [];
+            hasPlayerMoved = false; // Yeniden doğduğunda da sen hareket edene kadar Keeper bekler!
+            isMoonAlert = false;
+            wasMoonAlert = false;
+            invulnerableTimer = 1.2;
+        }
+
+        function startStage(idx) {
+            currentStageIdx = idx;
+            const st = GAME_CONFIG.stages[idx];
+            timeLeft = st.duration;
+            collectedOrbs = 0;
+            resetPositions();
+            spawnOrbs(st.orbs);
+            updateHUD();
+            showToast(`Aşama ${st.stage}: Sen hareket edene kadar Keeper bekliyor. Hazır olunca WASD ile başla!`);
+        }
+
+        window.startGame = function() {
+            audio.init();
+            document.getElementById('startOverlay').classList.add('hidden');
+            document.getElementById('endOverlay').classList.add('hidden');
+            score = 0;
+            lives = GAME_CONFIG.maxLives;
+            isRunning = true;
+            startStage(0);
+        };
+
+        window.toggleCamera = function() {
+            camMode = camMode === 'iso' ? 'follow' : 'iso';
+            document.getElementById('camToggleBtn').textContent =
+                camMode === 'iso' ? 'Kamera: İzometrik' : 'Kamera: Yakın Takip';
+        };
+
+        window.toggleStyle = function() {
+            styleMode = (styleMode + 1) % 3;
+            const names = ['Montour Baskı', 'Gravür Tarama', '1-Bit Kontrast'];
+            document.getElementById('styleToggleBtn').textContent = `Stil: ${names[styleMode]}`;
+        };
+
+        function updateHUD() {
+            const st = GAME_CONFIG.stages[currentStageIdx];
+            document.getElementById('stageDisplay').textContent = `AŞAMA ${st.stage} / ${GAME_CONFIG.stages.length}`;
+            document.getElementById('timeText').textContent = `${Math.max(0, timeLeft).toFixed(1)} sn`;
+            const pct = Math.max(0, Math.min(100, (timeLeft / st.duration) * 100));
+            document.getElementById('timerFill').style.width = `${pct}%`;
+            document.getElementById('orbDisplay').textContent = `${collectedOrbs} / ${st.orbs}`;
+            document.getElementById('livesDisplay').textContent = '👻 '.repeat(Math.max(0, lives)).trim() || '—';
+            document.getElementById('scoreDisplay').textContent = score;
+
+            const badge = document.getElementById('statusBadge');
+            if (!hasPlayerMoved) {
+                badge.textContent = 'İLK ADIMIN BEKLENİYOR';
+                badge.className = 'badge wait';
+            } else if (isMoonAlert) {
+                badge.textContent = 'AY ALARMI: KEEPER HIZLANDI!';
+                badge.className = 'badge alert';
+            } else if (inOwlForest) {
+                badge.textContent = 'ORMAN GİZLENMESİ (YAVAŞLATMA)';
+                badge.className = 'badge stealth';
+            } else {
+                badge.textContent = 'SAKİN TAKİP';
+                badge.className = 'badge';
+            }
+        }
+
+        function endGame(victory, reasonText) {
+            isRunning = false;
+            document.getElementById('endTitle').textContent = victory ? 'GECEYİ FETHETTİN!' : 'YAKALANDIN!';
+            document.getElementById('endDesc').textContent = reasonText;
+            document.getElementById('finalScore').textContent = score;
+            document.getElementById('endOverlay').classList.remove('hidden');
+        }
+
+        window.addEventListener('keydown', (e) => {
+            keys[e.code] = true;
+            if (!isRunning && e.code === 'Space') {
+                e.preventDefault();
+                window.startGame();
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            keys[e.code] = false;
+        });
+
+        // =========================================================================
+        // İZOMETRİK 2.5D MONTOUR ÇİZİM FONKSİYONLARI
+        // =========================================================================
+        function toIso(x, z, cx, cy, scale) {
+            return {
+                x: (x - z) * 0.866 * scale + cx,
+                y: (x + z) * 0.5 * scale + cy
+            };
+        }
+
+        function drawPoly(pts, cx, cy, scale, fill, stroke, lineW = 2) {
+            ctx.beginPath();
+            pts.forEach((p, i) => {
+                const iso = toIso(p[0], p[1], cx, cy, scale);
+                if (i === 0) ctx.moveTo(iso.x, iso.y);
+                else ctx.lineTo(iso.x, iso.y);
+            });
+            ctx.closePath();
+            if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+            if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = lineW; ctx.stroke(); }
+        }
+
+        // Lighthouse (place: hub — Deniz Feneri ve Dönen Işık Huzmesi)
+        function drawLighthouse(cx, cy, scale, C, t) {
+            const p = toIso(ISLAND_DATA.lighthouse.x, ISLAND_DATA.lighthouse.z, cx, cy, scale);
+
+            const beamAngle = t * 0.8;
+            ctx.save();
+            ctx.translate(p.x, p.y - 98);
+            ctx.rotate(beamAngle);
+            const grad = ctx.createRadialGradient(0, 0, 5, 0, 0, 170);
+            grad.addColorStop(0, 'rgba(255, 230, 160, 0.45)');
+            grad.addColorStop(1, 'rgba(255, 230, 160, 0)');
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.arc(0, 0, 170, -0.22, 0.22);
+            ctx.closePath();
+            ctx.fill();
+            ctx.restore();
+
+            ctx.fillStyle = '#8b857a';
+            ctx.strokeStyle = C.ink;
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            ctx.ellipse(p.x, p.y, 28, 14, 0, 0, Math.PI * 2);
+            ctx.fill(); ctx.stroke();
+
+            ctx.fillStyle = C.paper;
+            ctx.beginPath();
+            ctx.moveTo(p.x - 13, p.y - 88);
+            ctx.lineTo(p.x + 13, p.y - 88);
+            ctx.lineTo(p.x + 19, p.y - 4);
+            ctx.lineTo(p.x - 19, p.y - 4);
+            ctx.closePath();
+            ctx.fill(); ctx.stroke();
+
+            ctx.fillStyle = C.hot;
+            for (let yOff = -72; yOff <= -24; yOff += 24) {
+                ctx.beginPath();
+                ctx.moveTo(p.x, p.y + yOff - 10);
+                ctx.lineTo(p.x + 11, p.y + yOff);
+                ctx.lineTo(p.x, p.y + yOff + 10);
+                ctx.lineTo(p.x - 11, p.y + yOff);
+                ctx.closePath();
+                ctx.fill();
+            }
+
+            ctx.fillStyle = '#ffe699';
+            ctx.fillRect(p.x - 11, p.y - 104, 22, 16);
+            ctx.strokeRect(p.x - 11, p.y - 104, 22, 16);
+
+            ctx.fillStyle = C.hot;
+            ctx.beginPath();
+            ctx.moveTo(p.x, p.y - 124);
+            ctx.lineTo(p.x - 16, p.y - 104);
+            ctx.lineTo(p.x + 16, p.y - 104);
+            ctx.closePath();
+            ctx.fill(); ctx.stroke();
+        }
+
+        // Karakter 1: GHOST (char.ghost — Beyaz, Zikzak Etekli, 'o' Ağızlı)
+        function drawGhost(cx, cy, scale, C, t) {
+            ghostTrail.forEach((pt, idx) => {
+                if (idx % 4 !== 0) return;
+                const tp = toIso(pt.x, pt.z, cx, cy, scale);
+                const alpha = (idx / ghostTrail.length) * 0.25;
+                ctx.fillStyle = `rgba(241, 233, 216, ${alpha})`;
+                ctx.beginPath();
+                ctx.arc(tp.x, tp.y - 18, 9, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            const p = toIso(ghost.x, ghost.z, cx, cy, scale);
+            const floatY = Math.sin(t * 3.5) * 5;
+
+            ctx.save();
+            ctx.translate(p.x, p.y - 8 + floatY);
+
+            if (invulnerableTimer > 0 && Math.floor(t * 10) % 2 === 0) {
+                ctx.globalAlpha = 0.45;
+            }
+
+            ctx.fillStyle = 'rgba(0,0,0,0.32)';
+            ctx.beginPath();
+            ctx.ellipse(0, 8 - floatY, 13, 6, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = C.paper;
+            ctx.strokeStyle = C.ink;
+            ctx.lineWidth = 2.4;
+            ctx.beginPath();
+            ctx.arc(0, -28, 13, Math.PI, 0, false);
+            ctx.lineTo(15, 0);
+            ctx.lineTo(10, -5);
+            ctx.lineTo(5, 0);
+            ctx.lineTo(0, -5);
+            ctx.lineTo(-5, 0);
+            ctx.lineTo(-10, -5);
+            ctx.lineTo(-15, 0);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = C.ink;
+            ctx.beginPath();
+            ctx.arc(-4.5, -29, 2, 0, Math.PI * 2);
+            ctx.arc(4.5, -29, 2, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = C.hot;
+            ctx.beginPath();
+            ctx.ellipse(0, -22, 3, 4, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.restore();
+        }
+
+        // Karakter 2: OLD MOON (char.moon — Koni Yıldızlı Gövde, Sarı Disk Kafa, Uykulu Göz)
+        function drawOldMoon(cx, cy, scale, C, t) {
+            const p = toIso(oldMoon.x, oldMoon.z, cx, cy, scale);
+            const floatY = Math.sin(t * 2.2) * 5;
+            const alertR = GAME_CONFIG.moonAlertRadius * scale * 0.72;
+
+            ctx.save();
+            ctx.strokeStyle = isMoonAlert ? C.hot : 'rgba(226, 162, 58, 0.45)';
+            ctx.fillStyle = isMoonAlert ? 'rgba(232, 70, 43, 0.18)' : 'rgba(226, 162, 58, 0.08)';
+            ctx.lineWidth = isMoonAlert ? 3.5 : 2;
+            ctx.setLineDash([8, 6]);
+            ctx.beginPath();
+            ctx.ellipse(p.x, p.y, alertR, alertR * 0.58, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.restore();
+
+            if (isMoonAlert) {
+                const gp = toIso(ghost.x, ghost.z, cx, cy, scale);
+                const kp = toIso(keeper.x, keeper.z, cx, cy, scale);
+                ctx.strokeStyle = C.hot;
+                ctx.lineWidth = 2.5;
+                ctx.beginPath();
+                ctx.moveTo(p.x, p.y - 35);
+                ctx.lineTo(gp.x, gp.y - 25);
+                ctx.lineTo(kp.x, kp.y - 30);
+                ctx.stroke();
+            }
+
+            ctx.save();
+            ctx.translate(p.x, p.y - 6 + floatY);
+
+            ctx.fillStyle = C.ink;
+            ctx.strokeStyle = C.warm;
+            ctx.lineWidth = 2.2;
+            ctx.beginPath();
+            ctx.moveTo(0, -32);
+            ctx.lineTo(-15, 0);
+            ctx.lineTo(15, 0);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = C.warm;
+            [[-4, -10], [5, -14], [0, -21], [-6, -5], [6, -6]].forEach(([sx, sy]) => {
+                ctx.beginPath();
+                ctx.arc(sx, sy, 1.8, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            ctx.fillStyle = C.warm;
+            ctx.strokeStyle = C.ink;
+            ctx.lineWidth = 2.4;
+            ctx.beginPath();
+            ctx.arc(0, -42, 13, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.strokeStyle = C.ink;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(-4.5, -43, 3, 0.1 * Math.PI, 0.9 * Math.PI);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.arc(4.5, -43, 3, 0.1 * Math.PI, 0.9 * Math.PI);
+            ctx.stroke();
+
+            ctx.fillStyle = C.pink;
+            ctx.beginPath();
+            ctx.arc(-8, -39, 2.2, 0, Math.PI * 2);
+            ctx.arc(8, -39, 2.2, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.restore();
+        }
+
+        // Karakter 3: KEEPER (char.keeper — Denizci Çizgili Gövde, Bıyık, Denizci Şapkası, Elinde Fener)
+        function drawKeeper(cx, cy, scale, C, t) {
+            const p = toIso(keeper.x, keeper.z, cx, cy, scale);
+            const walkHop = hasPlayerMoved
+                ? Math.abs(Math.sin(t * (isMoonAlert ? 9 : 5))) * (isMoonAlert ? 6 : 3.5)
+                : 0;
+
+            ctx.save();
+            ctx.translate(p.x, p.y - walkHop);
+
+            ctx.fillStyle = isMoonAlert ? 'rgba(232, 70, 43, 0.34)' : 'rgba(255, 200, 106, 0.22)';
+            ctx.beginPath();
+            ctx.ellipse(0, walkHop, isMoonAlert ? 36 : 26, isMoonAlert ? 20 : 14, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = C.paper;
+            ctx.strokeStyle = C.ink;
+            ctx.lineWidth = 2.4;
+            ctx.beginPath();
+            ctx.roundRect(-13, -30, 26, 30, 8);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = C.cool;
+            for (let y = -22; y <= -6; y += 6) {
+                ctx.fillRect(-12, y, 24, 2.5);
+            }
+
+            ctx.fillStyle = C.hot;
+            ctx.beginPath();
+            ctx.moveTo(-7, -30);
+            ctx.lineTo(7, -30);
+            ctx.lineTo(0, -21);
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.fillStyle = C.paper;
+            ctx.beginPath();
+            ctx.arc(0, -40, 11, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = C.ink;
+            ctx.beginPath();
+            ctx.arc(-3.8, -42, 1.8, 0, Math.PI * 2);
+            ctx.arc(3.8, -42, 1.8, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.ellipse(-3.5, -37, 4.5, 2, -0.2, 0, Math.PI * 2);
+            ctx.ellipse(3.5, -37, 4.5, 2, 0.2, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = C.paper;
+            ctx.fillRect(-10, -55, 20, 7);
+            ctx.strokeRect(-10, -55, 20, 7);
+            ctx.fillStyle = C.cool;
+            ctx.fillRect(-10, -50, 20, 2.5);
+
+            ctx.fillStyle = isMoonAlert ? C.hot : '#ffc86a';
+            ctx.strokeStyle = C.ink;
+            ctx.lineWidth = 2;
+            ctx.fillRect(15, -24, 9, 12);
+            ctx.strokeRect(15, -24, 9, 12);
+
+            ctx.restore();
+        }
+
+        function renderScene(t) {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+
+            const activePal = styleMode === 2 ? PALETTES.a : PALETTES[GAME_CONFIG.palette];
+
+            ctx.fillStyle = activePal.sea;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.strokeStyle = 'rgba(241, 233, 216, 0.16)';
+            ctx.lineWidth = 2;
+            for (let row = 0; row < canvas.height; row += 55) {
+                for (let col = 0; col < canvas.width; col += 90) {
+                    const wx = col + ((row / 55) % 2) * 45 + Math.sin(t * 1.2 + row) * 8;
+                    ctx.beginPath();
+                    ctx.arc(wx, row, 14, Math.PI * 1.15, Math.PI * 1.85);
+                    ctx.stroke();
+                }
+            }
+
+            const baseScale = Math.min(canvas.width, canvas.height) / 14.5;
+            const scale = camMode === 'follow' ? baseScale * 1.45 : baseScale;
+            let cx = canvas.width / 2;
+            let cy = canvas.height / 2 + 25;
+
+            if (camMode === 'follow') {
+                const gIso = toIso(ghost.x, ghost.z, 0, 0, scale);
+                cx = canvas.width / 2 - gIso.x;
+                cy = canvas.height / 2 - gIso.y + 30;
+            }
+
+            drawPoly(ISLAND_DATA.coast, cx, cy + 8, scale * 1.06, activePal.seaShallow, null);
+            drawPoly(ISLAND_DATA.coast, cx, cy, scale, '#354839', activePal.ink, 3);
+
+            drawPoly(ISLAND_DATA.sandZone, cx, cy, scale, '#6e6556', null);
+            drawPoly(ISLAND_DATA.forestZone, cx, cy, scale, '#243628', activePal.ink, 1.5);
+
+            ISLAND_DATA.paths.forEach((path) => {
+                ctx.beginPath();
+                path.forEach((pt, idx) => {
+                    const iso = toIso(pt[0], pt[1], cx, cy, scale);
+                    if (idx === 0) ctx.moveTo(iso.x, iso.y);
+                    else ctx.lineTo(iso.x, iso.y);
+                });
+                ctx.strokeStyle = '#8a7f6d';
+                ctx.lineWidth = 14;
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+                ctx.stroke();
+            });
+
+            if (styleMode === 1) {
+                ctx.strokeStyle = 'rgba(241, 233, 216, 0.07)';
+                ctx.lineWidth = 1;
+                for (let i = -canvas.height; i < canvas.width; i += 10) {
+                    ctx.beginPath();
+                    ctx.moveTo(i, 0);
+                    ctx.lineTo(i + canvas.height, canvas.height);
+                    ctx.stroke();
+                }
+            }
+
+            ISLAND_DATA.boats.forEach((b, i) => {
+                const bp = toIso(b.x, b.z, cx, cy, scale);
+                const bob = Math.sin(t * 1.6 + i) * 3;
+                ctx.fillStyle = activePal.hot;
+                ctx.strokeStyle = activePal.ink;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.ellipse(bp.x, bp.y + bob, 16, 7, 0, 0, Math.PI * 2);
+                ctx.fill(); ctx.stroke();
+            });
+
+            ISLAND_DATA.houses.forEach((h) => {
+                const hp = toIso(h.x, h.z, cx, cy, scale);
+                ctx.fillStyle = activePal.paper;
+                ctx.strokeStyle = activePal.ink;
+                ctx.lineWidth = 2.2;
+                ctx.fillRect(hp.x - 18, hp.y - 24, 36, 24);
+                ctx.strokeRect(hp.x - 18, hp.y - 24, 36, 24);
+
+                ctx.fillStyle = activePal[h.color];
+                ctx.beginPath();
+                ctx.moveTo(hp.x, hp.y - 40);
+                ctx.lineTo(hp.x - 22, hp.y - 24);
+                ctx.lineTo(hp.x + 22, hp.y - 24);
+                ctx.closePath();
+                ctx.fill(); ctx.stroke();
+
+                ctx.fillStyle = '#ffbf5e';
+                ctx.fillRect(hp.x - 10, hp.y - 16, 7, 7);
+                ctx.fillRect(hp.x + 3, hp.y - 16, 7, 7);
+            });
+
+            ISLAND_DATA.trees.forEach((tr, i) => {
+                const tp = toIso(tr.x, tr.z, cx, cy, scale);
+                const sway = Math.sin(t * 1.4 + i) * 2;
+                ctx.fillStyle = activePal.wood;
+                ctx.fillRect(tp.x - 3, tp.y - 12, 6, 12);
+                ctx.fillStyle = activePal.green;
+                ctx.strokeStyle = activePal.ink;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(tp.x + sway, tp.y - 46 * (tr.h / 1.4));
+                ctx.lineTo(tp.x - 15, tp.y - 10);
+                ctx.lineTo(tp.x + 15, tp.y - 10);
+                ctx.closePath();
+                ctx.fill(); ctx.stroke();
+
+                const distGhost = Math.hypot(ghost.x - tr.x, ghost.z - tr.z);
+                if (distGhost < 2.2) {
+                    ctx.fillStyle = '#ffe600';
+                    ctx.beginPath();
+                    ctx.arc(tp.x - 3, tp.y - 22, 2.2, 0, Math.PI * 2);
+                    ctx.arc(tp.x + 3, tp.y - 22, 2.2, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            });
+
+            activeOrbs.forEach((orb, idx) => {
+                if (orb.collected) return;
+                const op = toIso(orb.x, orb.z, cx, cy, scale);
+                const bob = Math.sin(t * 3 + idx) * 4;
+
+                ctx.fillStyle = 'rgba(127, 255, 212, 0.25)';
+                ctx.beginPath();
+                ctx.arc(op.x, op.y - 14 + bob, 15, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = activePal.paper;
+                ctx.strokeStyle = activePal.ink;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(op.x, op.y - 14 + bob, 7.5, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+            });
+
+            drawLighthouse(cx, cy, scale, activePal, t);
+            drawOldMoon(cx, cy, scale, activePal, t);
+            drawGhost(cx, cy, scale, activePal, t);
+            drawKeeper(cx, cy, scale, activePal, t);
+        }
+
+        // =========================================================================
+        // ANA OYUN DÖNGÜSÜ (AGENCY & RECIPROCITY HESAPLAMALARI)
+        // =========================================================================
+        let prevNow = performance.now();
+
+        function loop(now) {
+            requestAnimationFrame(loop);
+            const dt = Math.min(0.05, (now - prevNow) / 1000);
+            prevNow = now;
+            const t = now / 1000;
+
+            if (isRunning) {
+                const st = GAME_CONFIG.stages[currentStageIdx];
+
+                // 1. GHOST HAREKET KONTROLÜ (AGENCY)
+                let dx = 0, dz = 0;
+                if (GAME_CONFIG.controls.up.some((c) => keys[c])) { dx -= 1; dz -= 1; }
+                if (GAME_CONFIG.controls.down.some((c) => keys[c])) { dx += 1; dz += 1; }
+                if (GAME_CONFIG.controls.left.some((c) => keys[c])) { dx -= 1; dz += 1; }
+                if (GAME_CONFIG.controls.right.some((c) => keys[c])) { dx += 1; dz -= 1; }
+
+                if (dx !== 0 || dz !== 0) {
+                    // Oyuncu ilk adımını attığı an Keeper ve süre aktifleşir!
+                    if (!hasPlayerMoved) {
+                        hasPlayerMoved = true;
+                        showToast('Takip başladı! Old Moon\'a yaklaşmadan küreleri topla!');
+                    }
+
+                    const len = Math.hypot(dx, dz);
+                    dx /= len; dz /= len;
+
+                    const sprint = keys[GAME_CONFIG.controls.sprint] || keys['ShiftRight'];
+                    const speed = GAME_CONFIG.ghostSpeed * (sprint ? GAME_CONFIG.sprintMultiplier : 1);
+                    const nextX = ghost.x + dx * speed * dt;
+                    const nextZ = ghost.z + dz * speed * dt;
+
+                    if (pointInPoly(ISLAND_DATA.coast, nextX, nextZ)) {
+                        ghost.x = nextX;
+                        ghost.z = nextZ;
+                    }
+                }
+
+                // Eğer oyuncu henüz hareket etmediyse Keeper, Old Moon ve süre tamamen bekler!
+                if (hasPlayerMoved) {
+                    timeLeft -= dt;
+                    if (invulnerableTimer > 0) invulnerableTimer -= dt;
+
+                    if (timeLeft <= 0) {
+                        timeLeft = 0;
+                        updateHUD();
+                        endGame(false, 'Süre doldu! Tüm Ruh Kürelerini zamanında toplayamadın.');
+                        return;
+                    }
+
+                    // 2. OLD MOON SAKİN DEVRİYE HAREKETİ
+                    oldMoon.angle += dt * st.moonSpeed;
+                    oldMoon.x = Math.cos(oldMoon.angle) * 2.5 - 0.3;
+                    oldMoon.z = Math.sin(oldMoon.angle * 1.3) * 2.1;
+
+                    ghostTrail.push({ x: ghost.x, z: ghost.z });
+                    if (ghostTrail.length > 55) ghostTrail.shift();
+
+                    // 3. RECIPROCITY: OLD MOON MESAFE KONTROLÜ & KEEPER HIZ TEPKİSİ
+                    const distToMoon = Math.hypot(ghost.x - oldMoon.x, ghost.z - oldMoon.z);
+                    isMoonAlert = distToMoon <= GAME_CONFIG.moonAlertRadius;
+
+                    if (isMoonAlert && !wasMoonAlert) {
+                        audio.playMoonAlarm();
+                        showToast('DİKKAT! Old Moon seni fark etti — Keeper hızlandı!');
+                    }
+                    wasMoonAlert = isMoonAlert;
+
+                    inOwlForest = pointInPoly(ISLAND_DATA.forestZone, ghost.x, ghost.z);
+
+                    let currentKeeperSpeed = GAME_CONFIG.keeperBaseSpeed * st.keeperBonus;
+                    if (isMoonAlert) {
+                        currentKeeperSpeed *= GAME_CONFIG.moonBoostMultiplier;
+                    } else if (inOwlForest) {
+                        currentKeeperSpeed *= GAME_CONFIG.forestSlowMultiplier;
+                    }
+
+                    const kx = ghost.x - keeper.x;
+                    const kz = ghost.z - keeper.z;
+                    const kDist = Math.hypot(kx, kz) || 1;
+                    keeper.x += (kx / kDist) * currentKeeperSpeed * dt;
+                    keeper.z += (kz / kDist) * currentKeeperSpeed * dt;
+
+                    const pulseInterval = isMoonAlert ? 0.42 : Math.max(0.48, Math.min(1.3, kDist / 3.5));
+                    if (t - lastPulseTime > pulseInterval) {
+                        lastPulseTime = t;
+                        audio.playPulse(isMoonAlert);
+                    }
+
+                    // 4. YAKALANMA KONTROLÜ
+                    if (kDist <= GAME_CONFIG.catchRadius && invulnerableTimer <= 0) {
+                        lives--;
+                        audio.playCaught();
+                        if (lives <= 0) {
+                            updateHUD();
+                            endGame(false, 'Keeper seni yakaladı ve tüm can hakların tükendi!');
+                            return;
+                        } else {
+                            showToast(`Keeper'a yakalandın! Kalan Can: ${lives} — Sen hareket edene kadar bekliyor.`);
+                            resetPositions();
+                        }
+                    }
+
+                    // 5. RUH KÜRESİ TOPLAMA KONTROLÜ
+                    for (const orb of activeOrbs) {
+                        if (!orb.collected) {
+                            const distOrb = Math.hypot(ghost.x - orb.x, ghost.z - orb.z);
+                            if (distOrb <= GAME_CONFIG.orbCollectRadius) {
+                                orb.collected = true;
+                                collectedOrbs++;
+                                score += isMoonAlert ? 200 : 120;
+                                audio.playOrbCollect();
+
+                                if (collectedOrbs >= st.orbs) {
+                                    score += Math.round(timeLeft * st.bonusPerSec);
+                                    audio.playStageWin();
+                                    if (currentStageIdx + 1 < GAME_CONFIG.stages.length) {
+                                        startStage(currentStageIdx + 1);
+                                    } else {
+                                        updateHUD();
+                                        endGame(true, 'Tüm aşamalardaki Ruh Kürelerini Keeper\'a yakalanmadan topladın!');
+                                        return;
+                                    }
+                                } else {
+                                    showToast(`Ruh Küresi toplandı! Kalan: ${st.orbs - collectedOrbs}`);
+                                }
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                updateHUD();
+            }
+
+            renderScene(t);
+        }
+
+        requestAnimationFrame(loop);
+    </script>
+</body>
+</html>
